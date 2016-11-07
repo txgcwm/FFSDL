@@ -26,6 +26,12 @@ class SDL {
         void initRect();
         void setBuffer(void* pixels, int pitch);
         void showFrame(int mSec);
+        void setAudioFreq(int freq);
+        void setAudioFormat(SDL_AudioFormat);
+        void setAudioChannels(int channels);
+        void setAudioSilence(int silence);
+        void setAudioSamples(int samples);
+        void setAudioCallBack(SDL_AudioCallback callBack);
         virtual ~SDL();
     private:
         SDL_Window *window;
@@ -37,4 +43,5 @@ class SDL {
         void* vPixels;
         int vPitch;
         Uint32 vFormat;
+        SDL_AudioSpec wanted_spec;
 };

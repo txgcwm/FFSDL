@@ -55,6 +55,31 @@ void SDL::setVideoPixFormat(Uint32 format) {
     vFormat = format;
 }
 
+void SDL::setAudioFreq(int freq) {
+    wanted_spec.freq = freq;
+}
+
+void SDL::setAudioFormat(SDL_AudioFormat fmt) {
+    wanted_spec.format = fmt;
+}
+
+void SDL::setAudioChannels(int channels) {
+    wanted_spec.channels = channels;
+}
+
+void SDL::setAudioSilence(int silence) {
+    wanted_spec.silence = silence;
+}
+
+void SDL::setAudioSamples(int samples) {
+    wanted_spec.samples = samples;
+}
+
+void SDL::setAudioCallBack(SDL_AudioCallback callback) {
+    wanted_spec.callback = callback;
+}
+
+
 void SDL::initRect() {
     rect.x = 0;
     rect.y = 0;
