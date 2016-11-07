@@ -1,0 +1,11 @@
+core
+
+tags
+
+*.ts
+
+*.o
+
+*.gch
+
+decode
