@@ -5,7 +5,7 @@ extern "C"
 #include <libswscale/swscale.h>
 #include <libavcodec/avcodec.h>
 #include <libavutil/imgutils.h>
-
+#include <libswresample/swresample.h>
 #include <sys/time.h>
 }
 
@@ -23,11 +23,12 @@ class MediaDecoder {
         void setDataSource(const char *url);
         int prepare();
         int initCodec();
+        int getPacket(AVPacket *pkt);
+        int getFrame(AVPacket *pkt, AVFrame *frame);
+
         void setOutVideoWidth(int w);
         void setOutVideoHeight(int h);
         void setOutVideoPixFmt(AVPixelFormat fmt);
-        int getPacket(AVPacket *pkt);
-        int getFrame(AVPacket *pkt, AVFrame *frame);
         AVFrame* convertVideoFrame(AVFrame *src);
         void initVideoConvert();
         AVRational getVideoTimeBase();
@@ -38,6 +39,14 @@ class MediaDecoder {
         int getVideoHeight();
         void setDisPlayWidth(int w);
         void setDisPlayHeight(int h);
+
+        int getAudioIndex();
+        void initAudioConvert();
+        void setOutAudioFromat(AVSampleFormat fmt);
+        void setOutAudioSampleRate(int rate);
+        void setOutAudioLayout(int64_t layout);
+        void setOutChannels(int channels);
+
         static int64_t getMsByPts(AVRational time_base, int64_t pts);
         static int64_t getCurMs();
         static int64_t getCurUs();
@@ -51,11 +60,24 @@ class MediaDecoder {
         int displayWidth;
         int displayHeight;
         AVRational videoTimeBase;
-        enum AVPixelFormat videoPixFmt;
-        enum AVPixelFormat outPixFmt;
+        AVPixelFormat videoPixFmt;
+        AVPixelFormat outPixFmt;
+        SwsContext *swsVideoCtx;
+
+        SwrContext *swrAudioCtx;
+        int audioSampleRate;
+        int audioChannels;
+        AVSampleFormat audioSampleFormat;
+        int audioNbSamples;
+        int64_t audioLayout;
+        int outSampleRate;
+        int outChannels;
+        AVSampleFormat outSampleFormat;
+        int outNbSamples;
+        int64_t outLayout;
+
         string url;
         AVFormatContext *inputFormatContext;
-        SwsContext *swsCtx;
 };
 
 MediaDecoder::MediaDecoder():hasVideo(false),
@@ -67,7 +89,8 @@ MediaDecoder::MediaDecoder():hasVideo(false),
     displayWidth(-1),
     displayHeight(-1),
     inputFormatContext(NULL),
-    swsCtx(NULL),
+    swsVideoCtx(NULL),
+    swrAudioCtx(NULL),
     url("")
 {
     av_register_all();
@@ -102,6 +125,10 @@ void MediaDecoder::setDisPlayHeight(int h) {
 
 int MediaDecoder::getVideoIndex() {
     return videoIndex;
+}
+
+int MediaDecoder::getAudioIndex() {
+    return audioIndex;
 }
 
 void MediaDecoder::setOutVideoWidth(int width) {
@@ -206,26 +233,46 @@ int MediaDecoder::getPacket(AVPacket *pkt) {
 
 int MediaDecoder::getFrame(AVPacket *pkt, AVFrame *frame) {
     int ret = 0;
+    int got_frame = 0;
     if(pkt->stream_index == videoIndex) {
-        int got_frame = 0;
         ret = avcodec_decode_video2(inputFormatContext->streams[pkt->stream_index]->codec, frame, &got_frame, pkt);
-        av_log(NULL, AV_LOG_DEBUG, "get frame ret %d got_frame %d\n", ret, got_frame);
+        av_log(NULL, AV_LOG_DEBUG, "get video frame ret %d got_frame %d\n", ret, got_frame);
         if(got_frame <= 0) {
             return -1;
         }
         return ret;
     } else if(pkt->stream_index == audioIndex) {
+        ret = avcodec_decode_audio4(inputFormatContext->streams[pkt->stream_index]->codec, frame,&got_frame, pkt);
+        if(got_frame <= 0) {
+            return -1;
+        }
+        return ret;
+        av_log(NULL, AV_LOG_DEBUG, "get audio frame ret %d got_frame %d\n", ret, got_frame);
     }
     return -1;
 }
 
 void MediaDecoder::initVideoConvert() {
-    if(swsCtx) {
-        sws_freeContext(swsCtx);
+    if(swsVideoCtx) {
+        sws_freeContext(swsVideoCtx);
     }
     av_log(NULL, AV_LOG_ERROR, "videoWidth %d videoHeight %d displayWidth %d displayHeight %d\n", videoWidth, videoHeight, displayWidth, displayHeight);
-    swsCtx = sws_getContext(videoWidth, videoHeight, videoPixFmt, displayWidth, displayHeight, outPixFmt, SWS_BILINEAR, NULL, NULL, NULL);
+    swsVideoCtx = sws_getContext(videoWidth, videoHeight, videoPixFmt, displayWidth, displayHeight, outPixFmt, SWS_BILINEAR, NULL, NULL, NULL);
     return 1;
+}
+
+void MediaDecoder::initAudioConvert() {
+    if(swrAudioCtx) {
+        swr_free(&swrAudioCtx);
+    }
+    swrAudioCtx = swr_alloc();
+    av_opt_set_int(swrAudioCtx, "in_channel_layout", audioLayout, 0);
+    av_opt_set_int(swrAudioCtx, "in_sample_rate", audioSampleRate, 0);
+    av_opt_set_sample_fmt(swrAudioCtx, "in_sample_fmt", audioSampleFormat, 0);
+    av_opt_set_int(swrAudioCtx, "out_channel_layout", outLayout, 0);
+    av_opt_set_int(swrAudioCtx, "out_sample_rate", outSampleRate, 0);
+    av_opt_set_sample_fmt(swrAudioCtx, "out_sample_fmt", outSampleFormat, 0);
+    swr_init();
 }
 
 AVFrame* MediaDecoder::convertVideoFrame(AVFrame *src) {
@@ -234,7 +281,7 @@ AVFrame* MediaDecoder::convertVideoFrame(AVFrame *src) {
     printf("frame size is %d\n", frameSize);
     unsigned char* frameData = (unsigned char*)av_malloc(frameSize);
     av_image_fill_arrays(frame->data, frame->linesize, frameData, outPixFmt, displayWidth, displayHeight, 1);
-    sws_scale(swsCtx, src->data, src->linesize, 0, videoHeight, frame->data, frame->linesize);
+    sws_scale(swsVideoCtx, src->data, src->linesize, 0, videoHeight, frame->data, frame->linesize);
     return frame;
 }
 
@@ -298,6 +345,9 @@ int main(int argc, char **argv) {
                 }
                 printf("%d %d %d\n", outFrame->linesize[0], outFrame->linesize[1], outFrame->linesize[2]);
                 av_frame_free(&outFrame);
+            }
+        } else if(pkt->stream_index == decoder.getAudioIndex()) {
+            if(decoder.getFrame(pkt, frame) > 0) {
             }
         }
         event.type = REFRESH_EVENT;
