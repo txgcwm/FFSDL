@@ -42,10 +42,15 @@ class MediaDecoder {
 
         int getAudioIndex();
         void initAudioConvert();
+        AVFrame* convertAudioFrame(AVFrame *src);
         void setOutAudioFromat(AVSampleFormat fmt);
         void setOutAudioSampleRate(int rate);
-        void setOutAudioLayout(int64_t layout);
-        void setOutChannels(int channels);
+        void setOutAudioLayout(uint64_t layout);
+        void setOutAudioChannels(int channels);
+        uint64_t getAudioLayout();
+        int getSampleRate();
+        int getChannels();
+        AVSampleFormat getAudioFormat();
 
         static int64_t getMsByPts(AVRational time_base, int64_t pts);
         static int64_t getCurMs();
@@ -69,12 +74,12 @@ class MediaDecoder {
         int audioChannels;
         AVSampleFormat audioSampleFormat;
         int audioNbSamples;
-        int64_t audioLayout;
+        uint64_t audioLayout;
         int outSampleRate;
         int outChannels;
         AVSampleFormat outSampleFormat;
         int outNbSamples;
-        int64_t outLayout;
+        uint64_t outLayout;
 
         string url;
         AVFormatContext *inputFormatContext;
@@ -135,8 +140,40 @@ void MediaDecoder::setOutVideoWidth(int width) {
     displayWidth = width;
 }
 
+AVSampleFormat MediaDecoder::getAudioFormat() {
+    return audioSampleFormat;
+}
+
+int MediaDecoder::getSampleRate() {
+    return audioSampleRate;
+}
+
+uint64_t MediaDecoder::getAudioLayout() {
+    return audioLayout;
+}
+
+int MediaDecoder::getChannels() {
+    return audioChannels;
+}
+
 void MediaDecoder::setOutVideoHeight(int height) {
     displayHeight = height;
+}
+
+void MediaDecoder::setOutAudioSampleRate(int rate) {
+    outSampleRate;
+}
+
+void MediaDecoder::setOutAudioFromat(AVSampleFormat fmt) {
+    outSampleFormat = fmt;
+}
+
+void MediaDecoder::setOutAudioChannels(int ch) {
+    outChannels = ch;
+}
+
+void MediaDecoder::setOutAudioLayout(uint64_t layout) {
+    outLayout = layout;
 }
 
 void MediaDecoder::setOutVideoPixFmt(AVPixelFormat fmt) {
@@ -196,6 +233,10 @@ int MediaDecoder::initCodec() {
             videoPixFmt = dec_ctx->pix_fmt;
             videoTimeBase = inStream->time_base;
         } else if(inStream->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+            audioSampleRate = dec_ctx->sample_rate;
+            audioChannels = dec_ctx->channels;
+            audioSampleFormat = dec_ctx->sample_fmt;
+            audioLayout = dec_ctx->channel_layout;
             hasAudio = true;
             audioIndex = i;
         }
@@ -272,7 +313,7 @@ void MediaDecoder::initAudioConvert() {
     av_opt_set_int(swrAudioCtx, "out_channel_layout", outLayout, 0);
     av_opt_set_int(swrAudioCtx, "out_sample_rate", outSampleRate, 0);
     av_opt_set_sample_fmt(swrAudioCtx, "out_sample_fmt", outSampleFormat, 0);
-    swr_init();
+    swr_init(swrAudioCtx);
 }
 
 AVFrame* MediaDecoder::convertVideoFrame(AVFrame *src) {
@@ -285,14 +326,25 @@ AVFrame* MediaDecoder::convertVideoFrame(AVFrame *src) {
     return frame;
 }
 
+AVFrame* MediaDecoder::convertAudioFrame(AVFrame *src) {
+    AVFrame *frame = av_frame_alloc();
+    return frame;
+}
+
 int main(int argc, char **argv) {
+    int audioChannels = 2;
     MediaDecoder decoder;
     decoder.setDataSource(argv[1]);
     decoder.prepare();
     decoder.setOutVideoPixFmt(AV_PIX_FMT_YUV420P);
     decoder.setDisPlayWidth(decoder.getVideoWidth());
     decoder.setDisPlayHeight(decoder.getVideoHeight());
+    decoder.setOutAudioChannels(audioChannels);
+    decoder.setOutAudioLayout(av_get_default_channel_layout(audioChannels));
+    decoder.setOutAudioFromat(AUDIO_S16SYS);
+    decoder.setOutAudioSampleRate(decoder.getSampleRate());
     decoder.initVideoConvert();
+    decoder.initAudioConvert();
 
     AVPacket *pkt = (AVPacket *)av_malloc(sizeof(AVPacket));
     AVFrame *frame = av_frame_alloc();
