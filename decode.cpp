@@ -42,8 +42,8 @@ class MediaDecoder {
 
         int getAudioIndex();
         void initAudioConvert();
-        AVFrame* convertAudioFrame(AVFrame *src);
-        void setOutAudioFromat(AVSampleFormat fmt);
+        int convertAudioFrame(AVFrame *src, AVFrame *out);
+        void setOutAudioFormat(AVSampleFormat fmt);
         void setOutAudioSampleRate(int rate);
         void setOutAudioLayout(uint64_t layout);
         void setOutAudioChannels(int channels);
@@ -73,7 +73,6 @@ class MediaDecoder {
         int audioSampleRate;
         int audioChannels;
         AVSampleFormat audioSampleFormat;
-        int audioNbSamples;
         uint64_t audioLayout;
         int outSampleRate;
         int outChannels;
@@ -161,10 +160,10 @@ void MediaDecoder::setOutVideoHeight(int height) {
 }
 
 void MediaDecoder::setOutAudioSampleRate(int rate) {
-    outSampleRate;
+    outSampleRate = rate;
 }
 
-void MediaDecoder::setOutAudioFromat(AVSampleFormat fmt) {
+void MediaDecoder::setOutAudioFormat(AVSampleFormat fmt) {
     outSampleFormat = fmt;
 }
 
@@ -283,12 +282,12 @@ int MediaDecoder::getFrame(AVPacket *pkt, AVFrame *frame) {
         }
         return ret;
     } else if(pkt->stream_index == audioIndex) {
-        ret = avcodec_decode_audio4(inputFormatContext->streams[pkt->stream_index]->codec, frame,&got_frame, pkt);
+        ret = avcodec_decode_audio4(inputFormatContext->streams[pkt->stream_index]->codec, frame, &got_frame, pkt);
         if(got_frame <= 0) {
             return -1;
         }
-        return ret;
         av_log(NULL, AV_LOG_DEBUG, "get audio frame ret %d got_frame %d\n", ret, got_frame);
+        return ret;
     }
     return -1;
 }
@@ -299,7 +298,6 @@ void MediaDecoder::initVideoConvert() {
     }
     av_log(NULL, AV_LOG_ERROR, "videoWidth %d videoHeight %d displayWidth %d displayHeight %d\n", videoWidth, videoHeight, displayWidth, displayHeight);
     swsVideoCtx = sws_getContext(videoWidth, videoHeight, videoPixFmt, displayWidth, displayHeight, outPixFmt, SWS_BILINEAR, NULL, NULL, NULL);
-    return 1;
 }
 
 void MediaDecoder::initAudioConvert() {
@@ -307,28 +305,50 @@ void MediaDecoder::initAudioConvert() {
         swr_free(&swrAudioCtx);
     }
     swrAudioCtx = swr_alloc();
+    if(!swrAudioCtx) {
+        av_log(NULL,AV_LOG_ERROR,  "swr_alloc error !\n");
+        return;
+    }
+    av_opt_set_int(swrAudioCtx, "ich", audioChannels, 0);
     av_opt_set_int(swrAudioCtx, "in_channel_layout", audioLayout, 0);
     av_opt_set_int(swrAudioCtx, "in_sample_rate", audioSampleRate, 0);
     av_opt_set_sample_fmt(swrAudioCtx, "in_sample_fmt", audioSampleFormat, 0);
+    av_opt_set_int(swrAudioCtx, "och", outChannels, 0);
     av_opt_set_int(swrAudioCtx, "out_channel_layout", outLayout, 0);
     av_opt_set_int(swrAudioCtx, "out_sample_rate", outSampleRate, 0);
     av_opt_set_sample_fmt(swrAudioCtx, "out_sample_fmt", outSampleFormat, 0);
-    swr_init(swrAudioCtx);
+    if(swr_init(swrAudioCtx) < 0) {
+        av_log(NULL,AV_LOG_ERROR,  "swr_init error\n");
+        return ;
+    }
+    av_log(NULL, AV_LOG_ERROR, "swr_init right\n");
 }
 
 AVFrame* MediaDecoder::convertVideoFrame(AVFrame *src) {
     AVFrame *frame = av_frame_alloc();
     int frameSize = av_image_get_buffer_size(outPixFmt, displayWidth, displayHeight, 1);
-    printf("frame size is %d\n", frameSize);
     unsigned char* frameData = (unsigned char*)av_malloc(frameSize);
     av_image_fill_arrays(frame->data, frame->linesize, frameData, outPixFmt, displayWidth, displayHeight, 1);
     sws_scale(swsVideoCtx, src->data, src->linesize, 0, videoHeight, frame->data, frame->linesize);
     return frame;
 }
 
-AVFrame* MediaDecoder::convertAudioFrame(AVFrame *src) {
-    AVFrame *frame = av_frame_alloc();
-    return frame;
+int MediaDecoder::convertAudioFrame(AVFrame *src, AVFrame *outFrame) {
+    unsigned int audioBufferSize;
+    int audioNbSamples = src->nb_samples;
+    int dstNbSample = av_rescale_rnd(swr_get_delay(swrAudioCtx, outSampleRate) +
+            audioNbSamples, outSampleRate, audioSampleRate, AV_ROUND_UP);
+    int ret = av_samples_alloc(outFrame->data,
+            outFrame->linesize,
+            outChannels,
+            dstNbSample,
+            outSampleFormat, 0);
+    if(ret < 0) {
+        av_log(NULL, AV_LOG_ERROR, "av_samples_alloc error\n");
+        return -1;
+    }
+    int len = swr_convert(swrAudioCtx, outFrame->data, dstNbSample, (const uint8_t**)src->data, src->nb_samples);
+    return len;
 }
 
 int main(int argc, char **argv) {
@@ -339,15 +359,17 @@ int main(int argc, char **argv) {
     decoder.setOutVideoPixFmt(AV_PIX_FMT_YUV420P);
     decoder.setDisPlayWidth(decoder.getVideoWidth());
     decoder.setDisPlayHeight(decoder.getVideoHeight());
-    decoder.setOutAudioChannels(audioChannels);
-    decoder.setOutAudioLayout(av_get_default_channel_layout(audioChannels));
-    decoder.setOutAudioFromat(AUDIO_S16SYS);
+    decoder.setOutAudioChannels(audioChannels/**decoder.getChannels()*/);
+    decoder.setOutAudioLayout(av_get_default_channel_layout(audioChannels)/**decoder.getAudioLayout()*/);
+    decoder.setOutAudioFormat(AV_SAMPLE_FMT_S16/**decoder.getAudioFormat()*/);
     decoder.setOutAudioSampleRate(decoder.getSampleRate());
     decoder.initVideoConvert();
     decoder.initAudioConvert();
 
     AVPacket *pkt = (AVPacket *)av_malloc(sizeof(AVPacket));
     AVFrame *frame = av_frame_alloc();
+
+    FILE *pcmFile = fopen("test.pcm", "wb+");
 
     SDL sdl(0);
     SDL_Event event;
@@ -399,7 +421,20 @@ int main(int argc, char **argv) {
                 av_frame_free(&outFrame);
             }
         } else if(pkt->stream_index == decoder.getAudioIndex()) {
-            if(decoder.getFrame(pkt, frame) > 0) {
+            while(pkt->size > 0) {
+                int readN = 0;
+                int count = 0;
+                if((readN = decoder.getFrame(pkt, frame)) > 0) {
+                    AVFrame *outFrame = av_frame_alloc();
+                    int len = decoder.convertAudioFrame(frame, outFrame);
+                    if(pcmFile) {
+                        int n = fwrite(outFrame->data[0], 1, outFrame->linesize[0], pcmFile);
+                        av_log(NULL, AV_LOG_DEBUG, "outFrame linesize %d %d writen %d readN %d pkt->size %d \n", outFrame->linesize[0], outFrame->linesize[1], n, readN, pkt->size);
+                    }
+                    pkt->size -= readN;
+                    pkt->data += readN;
+                    av_frame_free(&outFrame);
+                }
             }
         }
         event.type = REFRESH_EVENT;
@@ -410,5 +445,6 @@ int main(int argc, char **argv) {
     event.type = REFRESH_EVENT;
     SDL_PushEvent(&event);
     SDL_Quit();
+    fclose(pcmFile);
     return 0;
 }

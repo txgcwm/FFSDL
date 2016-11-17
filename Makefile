@@ -14,7 +14,7 @@ SDL_LDLIBS := $(shell sdl2-config --libs)
 
 CFLAGS += -Wall -g -fpermissive
 
-CC := clang++-3.8
+CC := clang++
 
 decode: decode.o ffsdl.o
 	$(CC) -o decode decode.o ffsdl.o $(CFLAGS) $(FFMPEG_LDLIBS) $(SDL_LDLIBS)
