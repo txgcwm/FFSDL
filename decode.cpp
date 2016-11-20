@@ -10,6 +10,8 @@ extern "C"
 }
 
 #include "ffsdl.h"
+#include "MediaFrame.h"
+#include "QueueNode.h"
 #include <iostream>
 using namespace::std;
 
