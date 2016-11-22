@@ -1,4 +1,4 @@
-#include "ffsdl.h"
+#include "FFSDL.h"
 
 InitError::InitError():
     exception(), msg(SDL_GetError()) {}

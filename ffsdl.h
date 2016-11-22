@@ -1,3 +1,6 @@
+#ifndef __FFSDL__H__
+#define __FFSDL__H__
+
 #include <iostream>
 #include <exception>
 #include <string>
@@ -45,3 +48,5 @@ class SDL {
         Uint32 vFormat;
         SDL_AudioSpec wanted_spec;
 };
+
+#endif
