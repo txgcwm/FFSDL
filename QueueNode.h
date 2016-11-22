@@ -1,3 +1,6 @@
+#ifndef __QUEUENODE__H__
+#define __QUEUENODE__H__
+
 #include <stdio.h>
 
 template<class T>
@@ -14,33 +17,5 @@ class QueueNode{
         ~QueueNode();
 };
 
-template<class T>
-QueueNode<T>::QueueNode(T v) {
-    this->val = v;
-    this->next = NULL;
-}
+#endif
 
-template<class T>
-void QueueNode<T>::setNext(QueueNode<T> *next) {
-    this->next = next;
-}
-
-template<class T>
-QueueNode<T>* QueueNode<T>::getNext() {
-    return next;
-}
-
-template<class T>
-void QueueNode<T>::setVal(T v) {
-    this->val = v;
-}
-
-template<class T>
-T QueueNode<T>::getVal() {
-    return val;
-}
-
-template<class T>
-QueueNode<T>::~QueueNode() {
-    this->next = NULL;
-}
