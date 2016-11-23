@@ -35,6 +35,8 @@ class SDL {
         void setAudioSilence(int silence);
         void setAudioSamples(int samples);
         void setAudioCallBack(SDL_AudioCallback callBack);
+        bool playAudio();
+        bool pauseAudio();
         virtual ~SDL();
     private:
         SDL_Window *window;
@@ -47,6 +49,7 @@ class SDL {
         int vPitch;
         Uint32 vFormat;
         SDL_AudioSpec wanted_spec;
+        bool isAudioOpen;
 };
 
 #endif

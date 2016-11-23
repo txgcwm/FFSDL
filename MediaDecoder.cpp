@@ -1,90 +1,6 @@
-extern "C"
-{
-#include <libavformat/avformat.h>
-#include <libavdevice/avdevice.h>
-#include <libswscale/swscale.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/imgutils.h>
-#include <libswresample/swresample.h>
-#include <sys/time.h>
-}
-
-#include "ffsdl.h"
-#include "MediaFrame.h"
-#include "QueueNode.h"
-#include <iostream>
-using namespace::std;
+#include "MediaDecoder.h"
 
 #define TAG "MediaDecoder"
-
-#define REFRESH_EVENT  (SDL_USEREVENT + 1)
-
-class MediaDecoder {
-    public:
-        MediaDecoder();
-        void setDataSource(const char *url);
-        int prepare();
-        int initCodec();
-        int getPacket(AVPacket *pkt);
-        int getFrame(AVPacket *pkt, AVFrame *frame);
-
-        void setOutVideoWidth(int w);
-        void setOutVideoHeight(int h);
-        void setOutVideoPixFmt(AVPixelFormat fmt);
-        AVFrame* convertVideoFrame(AVFrame *src);
-        void initVideoConvert();
-        AVRational getVideoTimeBase();
-        int getVideoIndex();
-        int getDisPlayWidth();
-        int getDisPlayHeight();
-        int getVideoWidth();
-        int getVideoHeight();
-        void setDisPlayWidth(int w);
-        void setDisPlayHeight(int h);
-
-        int getAudioIndex();
-        void initAudioConvert();
-        int convertAudioFrame(AVFrame *src, AVFrame *out);
-        void setOutAudioFormat(AVSampleFormat fmt);
-        void setOutAudioSampleRate(int rate);
-        void setOutAudioLayout(uint64_t layout);
-        void setOutAudioChannels(int channels);
-        uint64_t getAudioLayout();
-        int getSampleRate();
-        int getChannels();
-        AVSampleFormat getAudioFormat();
-
-        static int64_t getMsByPts(AVRational time_base, int64_t pts);
-        static int64_t getCurMs();
-        static int64_t getCurUs();
-    private:
-        bool hasVideo;
-        bool hasAudio;
-        int videoIndex;
-        int audioIndex;
-        int videoWidth;
-        int videoHeight;
-        int displayWidth;
-        int displayHeight;
-        AVRational videoTimeBase;
-        AVPixelFormat videoPixFmt;
-        AVPixelFormat outPixFmt;
-        SwsContext *swsVideoCtx;
-
-        SwrContext *swrAudioCtx;
-        int audioSampleRate;
-        int audioChannels;
-        AVSampleFormat audioSampleFormat;
-        uint64_t audioLayout;
-        int outSampleRate;
-        int outChannels;
-        AVSampleFormat outSampleFormat;
-        int outNbSamples;
-        uint64_t outLayout;
-
-        string url;
-        AVFormatContext *inputFormatContext;
-};
 
 MediaDecoder::MediaDecoder():hasVideo(false),
     hasAudio(false),
@@ -97,7 +13,7 @@ MediaDecoder::MediaDecoder():hasVideo(false),
     inputFormatContext(NULL),
     swsVideoCtx(NULL),
     swrAudioCtx(NULL),
-    url("")
+    url(NULL)
 {
     av_register_all();
     avdevice_register_all();
@@ -185,11 +101,15 @@ void MediaDecoder::setOutVideoPixFmt(AVPixelFormat fmt) {
 }
 
 void MediaDecoder::setDataSource(const char* url) {
-    this->url = url;
+    if(this->url) {
+        delete this->url;
+    }
+    this->url = new char[strlen(url) + 1];
+    strcpy(this->url, url);
 }
 
 int MediaDecoder::prepare() {
-    int ret = avformat_open_input(&inputFormatContext, url.c_str(), NULL, NULL);
+    int ret = avformat_open_input(&inputFormatContext, url, NULL, NULL);
     if(ret < 0) {
         av_log(NULL, AV_LOG_ERROR, "avformat_open_input error!");
         return ret;
@@ -241,7 +161,7 @@ int MediaDecoder::initCodec() {
             hasAudio = true;
             audioIndex = i;
         }
-        av_dump_format(inputFormatContext, i, url.c_str(), 0);
+        av_dump_format(inputFormatContext, i, url, 0);
     }
     av_log(NULL, AV_LOG_DEBUG, "videoIndex %d audioIndex %d\n", videoIndex, audioIndex);
     return 1;
@@ -353,100 +273,4 @@ int MediaDecoder::convertAudioFrame(AVFrame *src, AVFrame *outFrame) {
     return len;
 }
 
-int main(int argc, char **argv) {
-    int audioChannels = 2;
-    MediaDecoder decoder;
-    decoder.setDataSource(argv[1]);
-    decoder.prepare();
-    decoder.setOutVideoPixFmt(AV_PIX_FMT_YUV420P);
-    decoder.setDisPlayWidth(decoder.getVideoWidth());
-    decoder.setDisPlayHeight(decoder.getVideoHeight());
-    decoder.setOutAudioChannels(audioChannels/**decoder.getChannels()*/);
-    decoder.setOutAudioLayout(av_get_default_channel_layout(audioChannels)/**decoder.getAudioLayout()*/);
-    decoder.setOutAudioFormat(AV_SAMPLE_FMT_S16/**decoder.getAudioFormat()*/);
-    decoder.setOutAudioSampleRate(decoder.getSampleRate());
-    decoder.initVideoConvert();
-    decoder.initAudioConvert();
 
-    AVPacket *pkt = (AVPacket *)av_malloc(sizeof(AVPacket));
-    AVFrame *frame = av_frame_alloc();
-
-    FILE *pcmFile = fopen("test.pcm", "wb+");
-
-    SDL sdl(0);
-    SDL_Event event;
-    //SDL_LogSetAllPriority(SDL_LOG_PRIORITY_VERBOSE);
-
-    int64_t lastVideoFrameTime = -1;
-    int64_t lastVideoFramePts = -1;
-
-    sdl.setVideoWidth(decoder.getVideoWidth());
-    sdl.setVideoHeight(decoder.getVideoHeight());
-    sdl.setVideoPixFormat(SDL_PIXELFORMAT_IYUV);
-    sdl.createWindow();
-    sdl.initRect();
-    sdl.createTextrue();
-    sdl.showWindow();
-
-    event.type = REFRESH_EVENT;
-    SDL_PushEvent(&event);
-    while(decoder.getPacket(pkt) >= 0) {
-        SDL_WaitEvent(&event);
-        if(event.type==SDL_QUIT){
-            break;
-        }
-        if(pkt->stream_index == decoder.getVideoIndex()) {
-            if(decoder.getFrame(pkt, frame) > 0) {
-                AVFrame* outFrame = decoder.convertVideoFrame(frame);
-                av_log(NULL, AV_LOG_DEBUG, "pkt pts %lld\n", pkt->pts);
-                sdl.setBuffer(outFrame->data[0], outFrame->linesize[0]);
-                //sdl.setBuffer(frame->data[0], frame->linesize[0]);
-                if(lastVideoFrameTime == -1) {
-                    sdl.showFrame(0);
-                    lastVideoFrameTime = decoder.getCurMs();
-                    lastVideoFramePts = decoder.getMsByPts(decoder.getVideoTimeBase(), pkt->pts);
-                } else {
-                    int64_t curMsTime = decoder.getCurMs();
-                    int64_t curPtsTime = decoder.getMsByPts(decoder.getVideoTimeBase(), pkt->pts);
-                    int sleepTime = (curMsTime - lastVideoFrameTime) - (curPtsTime - lastVideoFramePts);
-                    if(sleepTime >= 0) {
-                        av_log(NULL, AV_LOG_ERROR, "sleepTime %d\n", sleepTime);
-                        sdl.showFrame(sleepTime);
-                    } else {
-                        sdl.showFrame(-sleepTime);
-                        av_log(NULL, AV_LOG_ERROR, "sleepTime %d\n", -sleepTime);
-                    }
-                    lastVideoFrameTime = decoder.getCurMs();
-                    lastVideoFramePts = decoder.getMsByPts(decoder.getVideoTimeBase(), pkt->pts);
-                }
-                printf("%d %d %d\n", outFrame->linesize[0], outFrame->linesize[1], outFrame->linesize[2]);
-                av_frame_free(&outFrame);
-            }
-        } else if(pkt->stream_index == decoder.getAudioIndex()) {
-            while(pkt->size > 0) {
-                int readN = 0;
-                int count = 0;
-                if((readN = decoder.getFrame(pkt, frame)) > 0) {
-                    AVFrame *outFrame = av_frame_alloc();
-                    int len = decoder.convertAudioFrame(frame, outFrame);
-                    if(pcmFile) {
-                        int n = fwrite(outFrame->data[0], 1, outFrame->linesize[0], pcmFile);
-                        av_log(NULL, AV_LOG_DEBUG, "outFrame linesize %d %d writen %d readN %d pkt->size %d \n", outFrame->linesize[0], outFrame->linesize[1], n, readN, pkt->size);
-                    }
-                    pkt->size -= readN;
-                    pkt->data += readN;
-                    av_frame_free(&outFrame);
-                }
-            }
-        }
-        event.type = REFRESH_EVENT;
-        SDL_PushEvent(&event);
-        av_free_packet(pkt);
-    }
-    av_free_packet(pkt);
-    event.type = REFRESH_EVENT;
-    SDL_PushEvent(&event);
-    SDL_Quit();
-    fclose(pcmFile);
-    return 0;
-}

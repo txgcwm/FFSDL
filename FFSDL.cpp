@@ -9,9 +9,11 @@ InitError::InitError():
             return msg.c_str();
         }
 
-SDL::SDL(Uint32 flags) throw(InitError) {
+SDL::SDL(Uint32 flags) throw(InitError) : isAudioOpen(false)
+{
     if (SDL_Init(flags) != 0)
         throw InitError();
+    SDL_memset(&wanted_spec, 0, sizeof(wanted_spec));
 }
 
 bool SDL::createWindow() {
@@ -53,6 +55,30 @@ void SDL::setVideoHeight(int height) {
 
 void SDL::setVideoPixFormat(Uint32 format) {
     vFormat = format;
+}
+
+bool SDL::playAudio() {
+    if(!isAudioOpen) {
+        if(SDL_OpenAudio(&wanted_spec, NULL) < 0) {
+            SDL_Log("Failed to open audio: %s", SDL_GetError());
+            return false;
+        }
+        isAudioOpen = true;
+    }
+    SDL_PauseAudio(0);
+    return true;
+}
+
+bool SDL::pauseAudio() {
+    if(!isAudioOpen) {
+        if(SDL_OpenAudio(&wanted_spec, NULL)) {
+            SDL_Log("Failed to open audio: %s", SDL_GetError());
+            return false;
+        }
+        isAudioOpen = true;
+    }
+    SDL_PauseAudio(1);
+    return true;
 }
 
 void SDL::setAudioFreq(int freq) {
