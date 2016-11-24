@@ -1,4 +1,5 @@
 #include "MediaDecoder.h"
+#include "MediaBuffer.h"
 #include "FFSDL.h"
 #define REFRESH_EVENT  (SDL_USEREVENT + 1)
 
@@ -10,9 +11,13 @@ static void sdl_fill_audio(void *udata, Uint8 *stream, int len) {
     if(len > sdlBufferLen) {
         len = sdlBufferLen;
     }
-    SDL_memset(stream, 0, len);
-    SDL_MixAudio(stream, sdlBuffer + startPos, len, SDL_MIX_MAXVOLUME/2);
-    printf("fuck111111111\n");
+    if(len > 0) {
+        SDL_memset(stream, 0, len);
+        SDL_MixAudio(stream, sdlBuffer + startPos, len, SDL_MIX_MAXVOLUME/2);
+        sdlBufferLen -= len;
+    } else {
+        av_log(NULL, AV_LOG_ERROR, "there is no audio!\n");
+    }
 }
 
 int main(int argc, char **argv) {
@@ -56,6 +61,8 @@ int main(int argc, char **argv) {
     sdl.setAudioSilence(0);
     sdl.setAudioSamples(4096);
     sdl.setAudioCallBack(sdl_fill_audio);
+
+    MediaBuffer mediaPktBuffer;
 
     if(!sdl.playAudio()) {
         exit(0);
@@ -104,6 +111,21 @@ int main(int argc, char **argv) {
                     int len = decoder.convertAudioFrame(frame, outFrame);
                     if(pcmFile) {
                         int n = fwrite(outFrame->data[0], 1, outFrame->linesize[0], pcmFile);
+                        int audioLen = outFrame->linesize[0];
+                        Uint8 *audioBuffer = outFrame->data[0];
+                        while(audioLen > 0) {
+                            if(sdlBufferLen <= 0) {
+                                if(audioLen >= 4096) {
+                                    memcpy(sdlBuffer, audioBuffer, 4096);
+                                    audioLen -= 4096;
+                                    sdlBufferLen = 4096;
+                                } else {
+                                    memcpy(sdlBuffer, audioBuffer, audioLen);
+                                    sdlBufferLen = audioLen;
+                                    audioLen = 0;
+                                }
+                            }
+                        }
                         av_log(NULL, AV_LOG_DEBUG, "outFrame linesize %d %d writen %d readN %d pkt->size %d \n", outFrame->linesize[0], outFrame->linesize[1], n, readN, pkt->size);
                     }
                     pkt->size -= readN;

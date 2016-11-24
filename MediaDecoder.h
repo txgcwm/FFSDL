@@ -1,3 +1,6 @@
+#ifndef __MEDIADECODER__H__
+#define __MEDIADECODER__H__
+
 extern "C"
 {
 #include <libavformat/avformat.h>
@@ -77,3 +80,5 @@ class MediaDecoder {
         char* url;
         AVFormatContext *inputFormatContext;
 };
+
+#endif

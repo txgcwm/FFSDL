@@ -16,27 +16,20 @@ CFLAGS += -Wall -g -fpermissive
 
 CC := clang++
 
-MediaPlayer: MediaPlayer.o MediaDecoder.o FFSDL.o MediaBuffer.o QueueNode.o Queue.o
-	$(CC) -o MediaPlayer MediaPlayer.o MediaDecoder.o FFSDL.o $(CFLAGS) $(FFMPEG_LDLIBS) $(SDL_LDLIBS)
-
+MediaPlayer: MediaPlayer.o MediaDecoder.o FFSDL.o MediaBuffer.o
+	$(CC) -o MediaPlayer MediaPlayer.cpp MediaDecoder.o FFSDL.o MediaBuffer.o $(CFLAGS) $(FFMPEG_LDLIBS) $(SDL_LDLIBS) $(FFMPEG_CFLAGS) $(SDL_CFLAGS)
 
 MediaPlayer.o: MediaPlayer.cpp
 	$(CC) -c $^ $(CFLAGS) $(FFMPEG_CFLAGS) $(SDL_CFLAGS)
 
-MediaDecoder.o: MediaDecoder.cpp
+MediaDecoder.o: MediaDecoder.cpp MediaDecoder.h
 	$(CC) -c $^ $(CFLAGS) $(FFMPEG_CFLAGS)
 
 FFSDL.o: FFSDL.cpp FFSDL.h
 	$(CC) -c $^ $(CFLAGS) $(SDL_CFLAGS)
 
-MediaBuffer.o: MediaBuffer.cpp MediaBuffer.h
+MediaBuffer.o: MediaBuffer.cpp MediaBuffer.h Queue.h QueueNode.h
 	$(CC) -c $^ $(CFLAGS) $(FFMPEG_CFLAGS) $(SDL_CFLAGS)
-
-QueueNode.o: QueueNode.cpp QueueNode.h
-	$(CC) -c $^
-
-Queue.o: Queue.cpp Queue.h
-	$(CC) -c $^
 
 clean:
 	rm *.o *.gch MediaDecoder
