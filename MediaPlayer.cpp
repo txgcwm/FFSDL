@@ -7,85 +7,6 @@ Uint8 sdlBuffer[4096];
 int sdlBufferLen = 0;
 int startPos = 0;
 
-class LoopBuffer {
-    private:
-        Uint8 *buffer;
-        int maxSize;
-        int size;
-        int startPos;
-        int endPos;
-    public:
-        LoopBuffer(int size);
-        bool pushData(Uint8* data, int len);
-        bool getData(Uint8* data, int len);
-        int getSize();
-        int getMaxSize();
-        int getFree();
-};
-
-LoopBuffer::LoopBuffer(int size) {
-    maxSize = size;
-    if(maxSize > 0) {
-        buffer = new Uint8[maxSize];
-    }
-    startPos = 0;
-    endPos = 0;
-    size = 0;
-}
-
-bool LoopBuffer::pushData(Uint8 *data, int len) {
-    if(len > maxSize - size) {
-        return false;
-    }
-    if(size == 0) {
-        memcpy(buffer, data, len);
-        endPos = len - 1;
-        startPos = 0;
-    } else if(endPos >= startPos) {
-        int tailLen = maxSize - 1 - endPos;
-        if(len <= tailLen) {
-            memcpy(buffer + endPos + 1, data, len);
-            endPos += len;
-        } else {
-            memcpy(buffer + endPos + 1, data, tailLen);
-            memcpy(buffer, data + tailLen, len - tailLen);
-            endPos = len - tailLen - 1;
-        }
-    } else  {
-        memcpy(buffer + endPos + 1, data, len);
-        endPos += len;
-    }
-    size += len;
-    return true;
-}
-
-bool LoopBuffer::getData(Uint8* data, int len) {
-    if(len > size || len <= 0) {
-        return false;
-    }
-    if(startPos <= endPos) {
-        memcpy(data, buffer + startPos, endPos - startPos -1);
-    } else {
-        int tailLen = maxSize - 1 - startPos;
-        memcpy(data, buffer + startPos, tailLen);
-        memcpy(data + tailLen, buffer, len - tailLen);
-        startPos = len - tailLen - 1;
-    }
-    size -= len;
-    return true;
-}
-
-int LoopBuffer::getSize() {
-    return size;
-}
-
-int LoopBuffer::getMaxSize() {
-    return maxSize;
-}
-
-int LoopBuffer::getFree() {
-    return maxSize - size;
-}
 
 static void sdl_fill_audio(void *udata, Uint8 *stream, int len) {
     if(len > sdlBufferLen) {
@@ -98,6 +19,39 @@ static void sdl_fill_audio(void *udata, Uint8 *stream, int len) {
     } else {
         av_log(NULL, AV_LOG_ERROR, "there is no audio!\n");
     }
+}
+
+class MediaPlayer {
+    private:
+        MediaBuffer *mediaPktBuffer;
+        MediaDecoder *decoder;
+        const int audioChannels = 2;
+    public:
+        MediaPlayer();
+        int setDataSource(const char* url);
+        int prepare();
+        void setDisplayParam(int w, int h);
+        static void sdlFillAudio(void *userdata, Uint8 *stream, int len);
+};
+
+MediaPlayer::MediaPlayer() {
+    mediaPktBuffer = new MediaBuffer();
+    decoder = new MediaDecoder();
+}
+
+int MediaPlayer::setDataSource(const char *url) {
+    decoder->setDataSource(url);
+    return 1;
+}
+
+int MediaPlayer::prepare() {
+    decoder->prepare();
+    return 1;
+}
+
+void MediaPlayer::setDisplayParam(int w, int h) {
+    decoder->setDisPlayWidth(w);
+    decoder->setDisPlayHeight(h);
 }
 
 int main(int argc, char **argv) {
