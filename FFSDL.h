@@ -34,6 +34,7 @@ class SDL {
         void setAudioChannels(int channels);
         void setAudioSilence(int silence);
         void setAudioSamples(int samples);
+        void setAudioUserData(void* userdata);
         void setAudioCallBack(SDL_AudioCallback callBack);
         bool playAudio();
         bool pauseAudio();

@@ -105,6 +105,9 @@ void SDL::setAudioCallBack(SDL_AudioCallback callback) {
     wanted_spec.callback = callback;
 }
 
+void SDL::setAudioUserData(void *userdata) {
+    wanted_spec.userdata = userdata;
+}
 
 void SDL::initRect() {
     rect.x = 0;
