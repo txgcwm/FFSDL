@@ -2,19 +2,23 @@
 
 
 
-MediaFrame::MediaFrame(AVFrame *frame) {
+MediaFrame::MediaFrame(AVFrame *frame)
+{
     this->frame = frame;
     nextFrame = NULL;
 }
 
-AVFrame* MediaFrame::getFrame() {
+AVFrame* MediaFrame::getFrame()
+{
     return frame;
 }
 
-void MediaFrame::setPts(int64_t pts) {
+void MediaFrame::setPts(int64_t pts)
+{
     this->pts = pts;
 }
 
-void MediaFrame::setDts(int64_t dts) {
+void MediaFrame::setDts(int64_t dts)
+{
     this->dts = dts;
 }

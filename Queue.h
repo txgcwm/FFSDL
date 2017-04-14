@@ -1,29 +1,32 @@
 #ifndef __QUEUE__H__
 #define __QUEUE__H__
 
-#include "QueueNode.h"
 #include <iostream>
+
+#include "QueueNode.h"
+
 
 template<class T>
 class Queue
 {
-private:
-    QueueNode<T> *head;
-    QueueNode<T> *tail;
-    int size;
-
 public:
     Queue();
     bool push(QueueNode<T> *item);
     bool dequeue(QueueNode<T>* &item);
     int getSize();
+
+private:
+    QueueNode<T> *head;
+    QueueNode<T> *tail;
+    int size;
 };
 
 
 template<class T>
-Queue<T>::Queue():head(NULL),
-    tail(NULL),
-    size(0)
+Queue<T>::Queue()
+: head(NULL)
+, tail(NULL)
+, size(0)
 {
 }
 
@@ -36,6 +39,7 @@ bool Queue<T>::push(QueueNode<T> *item)
         size = 1;
         return true;
     }
+
     if(tail != NULL) {
         tail->setNext(item);
         item->setNext(NULL);
@@ -43,6 +47,7 @@ bool Queue<T>::push(QueueNode<T> *item)
         size++;
         return true;
     }
+
     return false;
 }
 
@@ -52,15 +57,19 @@ bool Queue<T>::dequeue(QueueNode<T>* &item)
     if(head == NULL || size <= 0) {
         return false;
     }
+
     if(head->getNext() == NULL) {
         item = head;
         head = tail = NULL;
         size--;
+
         return true;
     }
+
     item = head;
     head = head->getNext();
     size--;
+
     return true;
 }
 

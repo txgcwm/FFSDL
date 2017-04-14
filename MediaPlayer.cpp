@@ -35,27 +35,32 @@ public:
     static void sdlFillAudio(void *userdata, Uint8 *stream, int len);
 };
 
-MediaPlayer::MediaPlayer() {
+MediaPlayer::MediaPlayer()
+{
     mediaPktBuffer = new MediaBuffer();
     decoder = new MediaDecoder();
 }
 
-int MediaPlayer::setDataSource(const char *url) {
+int MediaPlayer::setDataSource(const char *url)
+{
     decoder->setDataSource(url);
     return 1;
 }
 
-int MediaPlayer::prepare() {
+int MediaPlayer::prepare()
+{
     decoder->prepare();
     return 1;
 }
 
-void MediaPlayer::setDisplayParam(int w, int h) {
+void MediaPlayer::setDisplayParam(int w, int h)
+{
     decoder->setDisPlayWidth(w);
     decoder->setDisPlayHeight(h);
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     int audioChannels = 2;
     MediaDecoder decoder;
     decoder.setDataSource(argv[1]);
@@ -174,10 +179,12 @@ int main(int argc, char **argv) {
             }*/
             mediaPktBuffer->enQueueAudioPacket(pkt);
         }
+
         event.type = REFRESH_EVENT;
         SDL_PushEvent(&event);
         av_free_packet(pkt);
     }
+    
     printf("video count %d audio count %d\n", mediaPktBuffer->getVideoPacketCount(), mediaPktBuffer->getAudioPacketCount());
     av_free_packet(pkt);
     event.type = REFRESH_EVENT;

@@ -5,16 +5,13 @@ extern "C"
 {
 #include <libavformat/avformat.h>
 }
+
 #include "Queue.h"
 #include "SDL.h"
 
-class MediaBuffer {
-private:
-    Queue<AVPacket*> videoBuffer;
-    Queue<AVPacket*> audioBuffer;
-    SDL_mutex *audioMutex;
-    SDL_mutex *videoMutex;
 
+
+class MediaBuffer {
 public:
     MediaBuffer();
     bool enQueueVideoPacket(AVPacket* packet);
@@ -27,6 +24,12 @@ public:
     void unlockAudio();
     void lockVideo();
     void unlockVideo();
+
+private:
+    Queue<AVPacket*> videoBuffer;
+    Queue<AVPacket*> audioBuffer;
+    SDL_mutex *audioMutex;
+    SDL_mutex *videoMutex;
 };
 
 #endif

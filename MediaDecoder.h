@@ -14,7 +14,8 @@ extern "C"
 
 
 
-class MediaDecoder {
+class MediaDecoder
+{
 public:
     MediaDecoder();
     void setDataSource(const char *url);

@@ -4,13 +4,6 @@
 #include <string.h>
 
 class LoopBuffer {
-private:
-    unsigned char* buffer;
-    int maxSize;
-    int size;
-    int startPos;
-    int endPos;
-
 public:
     LoopBuffer(int size);
     bool pushData(unsigned char* data, int len);
@@ -18,6 +11,13 @@ public:
     int getSize();
     int getMaxSize();
     int getFree();
+
+private:
+    unsigned char* buffer;
+    int maxSize;
+    int size;
+    int startPos;
+    int endPos;
 };
 
 #endif
