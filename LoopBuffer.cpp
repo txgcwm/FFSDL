@@ -1,19 +1,25 @@
 #include "LoopBuffer.h"
 
-LoopBuffer::LoopBuffer(int size) {
+
+
+LoopBuffer::LoopBuffer(int size)
+{
     maxSize = size;
     if(maxSize > 0) {
         buffer = new unsigned char[maxSize];
     }
+
     startPos = 0;
     endPos = 0;
     size = 0;
 }
 
-bool LoopBuffer::pushData(unsigned char *data, int len) {
+bool LoopBuffer::pushData(unsigned char *data, int len)
+{
     if(len > maxSize - size) {
         return false;
     }
+
     if(size == 0) {
         memcpy(buffer, data, len);
         endPos = len - 1;
@@ -32,14 +38,18 @@ bool LoopBuffer::pushData(unsigned char *data, int len) {
         memcpy(buffer + endPos + 1, data, len);
         endPos += len;
     }
+
     size += len;
+
     return true;
 }
 
-bool LoopBuffer::getData(unsigned char* data, int len) {
+bool LoopBuffer::getData(unsigned char* data, int len)
+{
     if(len > size || len <= 0) {
         return false;
     }
+
     if(startPos <= endPos) {
         memcpy(data, buffer + startPos, endPos - startPos -1);
         startPos += len;
@@ -49,19 +59,24 @@ bool LoopBuffer::getData(unsigned char* data, int len) {
         memcpy(data + tailLen, buffer, len - tailLen);
         startPos = len - tailLen - 1;
     }
+
     size -= len;
+
     return true;
 }
 
-int LoopBuffer::getSize() {
+int LoopBuffer::getSize()
+{
     return size;
 }
 
-int LoopBuffer::getMaxSize() {
+int LoopBuffer::getMaxSize()
+{
     return maxSize;
 }
 
-int LoopBuffer::getFree() {
+int LoopBuffer::getFree()
+{
     return maxSize - size;
 }
 

@@ -22,16 +22,17 @@ static void sdl_fill_audio(void *udata, Uint8 *stream, int len) {
 }
 
 class MediaPlayer {
-    private:
-        MediaBuffer *mediaPktBuffer;
-        MediaDecoder *decoder;
-        const int audioChannels = 2;
-    public:
-        MediaPlayer();
-        int setDataSource(const char* url);
-        int prepare();
-        void setDisplayParam(int w, int h);
-        static void sdlFillAudio(void *userdata, Uint8 *stream, int len);
+private:
+    MediaBuffer *mediaPktBuffer;
+    MediaDecoder *decoder;
+    const int audioChannels = 2;
+
+public:
+    MediaPlayer();
+    int setDataSource(const char* url);
+    int prepare();
+    void setDisplayParam(int w, int h);
+    static void sdlFillAudio(void *userdata, Uint8 *stream, int len);
 };
 
 MediaPlayer::MediaPlayer() {
@@ -183,5 +184,8 @@ int main(int argc, char **argv) {
     SDL_PushEvent(&event);
     SDL_Quit();
     fclose(pcmFile);
+
     return 0;
 }
+
+

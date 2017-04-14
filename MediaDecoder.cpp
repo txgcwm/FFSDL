@@ -2,18 +2,21 @@
 
 #define TAG "MediaDecoder"
 
-MediaDecoder::MediaDecoder():hasVideo(false),
-    hasAudio(false),
-    videoIndex(-1),
-    audioIndex(-1),
-    videoWidth(-1),
-    videoHeight(-1),
-    displayWidth(-1),
-    displayHeight(-1),
-    inputFormatContext(NULL),
-    swsVideoCtx(NULL),
-    swrAudioCtx(NULL),
-    url(NULL)
+
+
+MediaDecoder::MediaDecoder()
+:hasVideo(false),
+hasAudio(false),
+videoIndex(-1),
+audioIndex(-1),
+videoWidth(-1),
+videoHeight(-1),
+displayWidth(-1),
+displayHeight(-1),
+inputFormatContext(NULL),
+swsVideoCtx(NULL),
+swrAudioCtx(NULL),
+url(NULL)
 {
     av_register_all();
     avdevice_register_all();

@@ -7,15 +7,16 @@
 template<class T>
 class Queue
 {
-    private:
-        QueueNode<T> *head;
-        QueueNode<T> *tail;
-        int size;
-    public:
-        Queue();
-        bool push(QueueNode<T> *item);
-        bool dequeue(QueueNode<T>* &item);
-        int getSize();
+private:
+    QueueNode<T> *head;
+    QueueNode<T> *tail;
+    int size;
+
+public:
+    Queue();
+    bool push(QueueNode<T> *item);
+    bool dequeue(QueueNode<T>* &item);
+    int getSize();
 };
 
 

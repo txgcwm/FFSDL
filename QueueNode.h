@@ -5,16 +5,17 @@
 
 template<class T>
 class QueueNode{
-    private:
-        T val;
-        QueueNode<T> *next;
-    public:
-        QueueNode(T v);
-        void setNext(QueueNode *next);
-        void setVal(T val);
-        QueueNode<T>* getNext();
-        T getVal();
-        ~QueueNode();
+private:
+    T val;
+    QueueNode<T> *next;
+
+public:
+    QueueNode(T v);
+    void setNext(QueueNode *next);
+    void setVal(T val);
+    QueueNode<T>* getNext();
+    T getVal();
+    ~QueueNode();
 };
 
 template<class T>
