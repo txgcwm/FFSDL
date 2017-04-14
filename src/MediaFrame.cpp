@@ -5,7 +5,7 @@
 MediaFrame::MediaFrame(AVFrame *frame)
 {
     this->frame = frame;
-    nextFrame = NULL;
+    // nextFrame = NULL;
 }
 
 AVFrame* MediaFrame::getFrame()

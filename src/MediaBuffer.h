@@ -6,9 +6,9 @@ extern "C"
 #include <libavformat/avformat.h>
 }
 
-#include "Queue.h"
-#include "SDL.h"
+#include "SDL2/SDL.h"
 
+#include "Queue.h"
 
 
 class MediaBuffer {

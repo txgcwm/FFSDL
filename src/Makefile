@@ -8,9 +8,12 @@ FFMPEG_LIBS=    libavdevice                        \
 
 FFMPEG_CFLAGS := $(shell pkg-config --cflags $(FFMPEG_LIBS)) $(CFLAGS)
 FFMPEG_LDLIBS := $(shell pkg-config --libs $(FFMPEG_LIBS)) $(LDLIBS)
-
+$(warning $(FFMPEG_CFLAGS))
+$(warning $(FFMPEG_LDLIBS))
 SDL_CFLAGS := $(shell sdl2-config --cflags)
 SDL_LDLIBS := $(shell sdl2-config --libs)
+$(warning $(SDL_CFLAGS))
+$(warning $(SDL_LDLIBS))
 
 CFLAGS += -Wall -g -fpermissive
 
